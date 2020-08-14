@@ -1,75 +1,55 @@
 # clowdr-backend
-Slack bot and REST services for clowdr
+Token server, Slack bot, REST services for Clowdr
 
-## Configure Twilio chat server 
+## Set up the environment variables
 
-To run the application, you should have your credentials and configure it in `.env`. To create this file from template, you could do this in your terminal.
+Start by cloning the repo.
 
-```bash
-cp .env.example .env
-```
-
-### Configure Twilio account info
-
-| Config Value | Description |
-| ------------ | ----------- |
-| `TWILIO_ACCOUNT_SID` | [Your primary Twilio account identifier](https://www.twilio.com/console).|
-|`TWILIO_API_KEY` | [Used to authenticate](https://www.twilio.com/console/dev-tools/api-keys).|
-|`TWILIO_API_SECRET` | [Used to authenticate](https://www.twilio.com/console/dev-tools/api-keys).|
-|`TWILIO_CHAT_SERVICE_SID` | [Chat](https://www.twilio.com/console/chat/services)|
-
-### Configure Parse account info
-
-In the same `.env`, you should configure Parse info based on this [instruction](https://github.com/clowdr-app/clowdr-web-app/blob/master/README.md).
-
-### Configure  `TWILIO_CALLBACK_URL`
-
-You'll need to create a publicly accessible URL using a tool like [Ngrok](https://ngrok.com/) to send HTTP/HTTPS traffic to a server running on your localhost. Use HTTPS to make web connections that retrieve a Twilio access token.
-
-Our backend server runs on `port 3001`, so you should do this in your Ngrok CLI.
+To run the application, you need to configure your credentials in `.env`. If
+you are in a Linux or macos environment, the easiest way is to simply add a
+symbolic link to the .env file of the web app:
 
 ```bash
-ngrok http 3001
+$ ln -s ../clowdr-web-app/.env .env
+```
+If you are in another environment, simply copy that file to the root of this directory.
+
+## Install and run
+
+```bash
+$ npm install
+```
+```bash
+$ npm start
 ```
 
-Then you should copy the https tunnel link and paste it into both `.env` file in this app and in [clowdr-web-app](https://github.com/clowdr-app/clowdr-web-app) with the name of `REACT_APP_TWILIO_CALLBACK_URL`.
+## Enable chat webhooks for twilio
 
-###  Configure `App.js`
+We use a webhook from twilio to track who is online.
 
-In your `Session` table, make sure that you only have exact one entry. If you don't have one right now, you could log in [clowdr-web-app](https://github.com/clowdr-app/clowdr-web-app) to create one and if you have more than one, you could just delete others.
+Go to your Twilio account, and locate the chat service created by Clowdr,
+called `clowdr_chat` (All Products and Services [the circle with three dots
+on the left] -> Programmable Chat, then click `clowdr_chat`).
 
-#### Configure `userId`
+BCP: I don't see clowdr_chat, but i do see the chat i created earlier...
+Also, should ngrok be mentioned earlier?
 
-Due to privilege restriction of Parse, we need to assign our `userId` in the app. Go to the `User` table and copy your `objectId` at [line 2145](https://github.com/clowdr-app/clowdr-backend/blob/master/app.js#L2145).
+From there:
 
-```javascript
-fauxUser.id = "YOUR USER OBJECID";
+* Base configuration -> check `Reachability enabled` and `Message read
+  status`
+
+* Webhooks -> Post event webhook, callback URL is your backend server
+  e.g. https://xxxxx.ngrok.io/twilio/chat/event , HTTP-POST method,
+  `onUserUpdated` event only.
+
+* Save
+
+If you are in a development environment, rather than production, you may need to set up a tunnel for Twilio to reach your server. Ngrok will work. Install it and run
+```bash
+$ ngrok http 3001
 ```
 
-#### For non-slack users
+Note the https URL that ngrok gives you `https://xxxxx.ngrok.io` -- that is the URL that you should use as callback URL in Twilio.
 
-Since some credentials are fetched from slack app, you need to load them in them in your `env` by changing [line 1965](https://github.com/clowdr-app/clowdr-backend/blob/master/app.js#L1965) as below.
-
-```js
-const accessToken = new AccessToken(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_API_KEY, process.env.TWILIO_API_SECRET,{ttl: 3600*24});
-```
-
-Moreover, you should comment out all codes from [line 545](https://github.com/clowdr-app/clowdr-backend/blob/master/app.js#L545) to line 555.
-
-```javascript
-// Comment out codes below if you don't connect this app to your slack app
-let allChannels = await r.config.slackClient.conversations.list({types: "private_channel,public_channel"});
-for(let channel of allChannels.channels){
-    if(channel.name=="moderators"){
-        r.moderatorChannel = channel.id;
-    }
-    else if(channel.name =="technical-support"){
-        r.techSupportChannel = channel.id;
-    }else if(channel.name=="session-help"){
-        r.sessionHelpChannel = channel.id;
-    }
-}
-```
-
-Now, use `npm install` to install all dependencies and use `npm start` to run the app. If you see `POST - code 200` in your Ngrok CLI and a token in that response, you are good to go!
-
+BCP: I don't see a URL that looks like this, or one that looks like the one above...
