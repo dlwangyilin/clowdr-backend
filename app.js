@@ -151,31 +151,31 @@ var emailsToParseUser;
 var allUsersPromise;
 var parseUIDToProfiles;
 
-slackEvents.on('team_join', async (event) => {
-    let conf = await getConference(event.user.team_id, "unknown");
-    if(conf.config.LOGIN_FROM_SLACK) {
-        const parseUser = await getOrCreateParseUser(event.user.id, conf, conf.config.slackClient);
-        console.log("Created parse user: " + parseUser.get("displayname") + " in " + conf.get("conferenceName"));
-    }
-});
+// slackEvents.on('team_join', async (event) => {
+//     let conf = await getConference(event.user.team_id, "unknown");
+//     if(conf.config.LOGIN_FROM_SLACK) {
+//         const parseUser = await getOrCreateParseUser(event.user.id, conf, conf.config.slackClient);
+//         console.log("Created parse user: " + parseUser.get("displayname") + " in " + conf.get("conferenceName"));
+//     }
+// });
 
-slackEvents.on('user_change', async (event) => {
-    let conf = await getConference(event.user.team_id, "unknown");
-    if(!conf.config.LOGIN_FROM_SLACK)
-        return;
-    let q = new Parse.Query(UserProfile);
-    q.equalTo("slackID", event.user.id);
-    q.equalTo("conference", conf);
-
-    let slackProfile = event.user;
-    let profile = await q.first({useMasterKey: true});
-    if (profile) {
-        if(profile.get("displayName") != slackProfile.real_name){
-            profile.set("displayName", slackProfile.real_name);
-            await profile.save({},{useMasterKey:true});
-        }
-    }
-});
+// slackEvents.on('user_change', async (event) => {
+//     let conf = await getConference(event.user.team_id, "unknown");
+//     if(!conf.config.LOGIN_FROM_SLACK)
+//         return;
+//     let q = new Parse.Query(UserProfile);
+//     q.equalTo("slackID", event.user.id);
+//     q.equalTo("conference", conf);
+//
+//     let slackProfile = event.user;
+//     let profile = await q.first({useMasterKey: true});
+//     if (profile) {
+//         if(profile.get("displayName") != slackProfile.real_name){
+//             profile.set("displayName", slackProfile.real_name);
+//             await profile.save({},{useMasterKey:true});
+//         }
+//     }
+// });
 
 function getAllUsers() {
     if (allUsersPromise)
@@ -1144,27 +1144,27 @@ slackInteractions.action({action_id: "join_video"}, async (payload, respond) => 
     return {}
 });
 
-slackEvents.on("app_home_opened", async (payload) => {
-    if (!payload.view)
-        return;
-    let team_id = payload.view.team_id;
-    let conf = await getConference(team_id)
-    // console.log(conf);
-
-    const parseUser = await getOrCreateParseUser(payload.user, conf, conf.slackClient);
-    const args = {
-        token: conf.config.SLACK_BOT_TOKEN,
-        user_id: payload.user,
-        view: await generateHome(conf, parseUser, payload.view.team_id)
-    };
-
-    const result = await axios.post('https://slack.com/api/views.publish', JSON.stringify(args), {
-        headers: {
-            "Authorization": "Bearer " + conf.config.SLACK_BOT_TOKEN,
-            'Content-Type': 'application/json'
-        }
-    });
-});
+// slackEvents.on("app_home_opened", async (payload) => {
+//     if (!payload.view)
+//         return;
+//     let team_id = payload.view.team_id;
+//     let conf = await getConference(team_id)
+//     // console.log(conf);
+//
+//     const parseUser = await getOrCreateParseUser(payload.user, conf, conf.slackClient);
+//     const args = {
+//         token: conf.config.SLACK_BOT_TOKEN,
+//         user_id: payload.user,
+//         view: await generateHome(conf, parseUser, payload.view.team_id)
+//     };
+//
+//     const result = await axios.post('https://slack.com/api/views.publish', JSON.stringify(args), {
+//         headers: {
+//             "Authorization": "Bearer " + conf.config.SLACK_BOT_TOKEN,
+//             'Content-Type': 'application/json'
+//         }
+//     });
+// });
 
 // async function sendLoginLinkToUser(conf, body){
 //     const parseUser = await getOrCreateParseUser(body.user_id, conf, conf.config.slackClient);
@@ -1204,123 +1204,123 @@ async function slackSlashCommand(req, res, next) {
     //     console.log(req.body);
     //     await sendLoginLinkToUser(conf, req.body);
     // }
-    if(req.body.command === "/saysomething" || req.body.command == "/moderator"){
-        try {
-            await sendModeratorMessageFromSlack(conf, req.body.user_id, req.body.text)
-            sendMessageWithLinkToUser(req.body.response_url,"Your message has been received by the moderators. They will contact you ASAP to follow up. " +
-                " Please note that since moderators are volunteers, we are unable to provide a 24/7 moderation service," +
-                " but will do our best to address every complaint as quickly as possible." //, and will be sure to follow up" +
-                // " to every report."
-                    , conf)
-        }catch(err){
-            console.log(err);
-            sendMessageWithLinkToUser(req.body.response_url, "An internal error occurred while sending your message. Please try again or email the organizers. ", conf);
-
-        }
-
-        return;
-    }
-    if(req.body.command === "/sessionhelp"){
-        try {
-            await sendSessionHelpMessageFromSlack(conf, req.body.user_id, req.body.text)
-            sendMessageWithLinkToUser(req.body.response_url,"Your message has been received by the organizers. You should receive a direct message via slack ASAP."
-                , conf)
-        }catch(err){
-            console.log(err);
-            sendMessageWithLinkToUser(req.body.response_url, "An internal error occurred while sending your message. Please try again or email the organizers. ", conf);
-
-        }
-
-        return;
-    }
-    if(req.body.command == "/gather"){
-        if(conf.config.GATHER_LINK)
-        {
-            const message = {
-                "text": "Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome",
-                "response_type": "ephemeral",
-                // Block Kit Builder - http://j.mp/bolt-starter-msg-json
-                "blocks": [
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome",
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "Gather has multiple maps that you can explore, <https://www.doc.ic.ac.uk/~afd/pldi-beach-minimap.jpg|like this entrance area and beach>."
-                        },
-                        "accessory": {
-                            "type": "image",
-                            "image_url": "https://www.doc.ic.ac.uk/~afd/pldi-beach-minimap.jpg",
-                            "alt_text": "Gather map"
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "The <https://www.doc.ic.ac.uk/~afd/pldi-minimap.jpg|virtual poster session and sponsor booths> also have their own room in Gather."
-                        },
-                        "accessory": {
-                            "type": "image",
-                            "image_url": "https://www.doc.ic.ac.uk/~afd/pldi-minimap.jpg",
-                            "alt_text": "Another Gather map"
-                        }
-                    }
-                ],
-            };
-            return axios.post(req.body.response_url, message);
-            // sendMessageWithLinkToUser(req.body.response_url,"Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome", conf);
-        }
-        else{
-            sendMessageWithLinkToUser(req.body.response_url,"This feature is not enabled on this slack workspace.", conf);
-        }
-        return
-    }
-    if(req.body.command === "/videodebug"){
-        req.body.command = "/video";
-        // return;
-
-
-    }
-    if (req.body.command === '/video_t' || req.body.command === '/video' || req.body.command === '/videoprivate' || req.body.command == "/videolist") {
-        res.send();
-        if(!conf.config.LOGIN_FROM_SLACK){
-            respondWithError(req.body.response_url, "Access video by logging in at " + conf.config.FRONTEND_URL);
-            return;
-        }
-
-        try {
-            if (req.body.text) {
-                await sendJoinLinkToUser(req.body, req.body.text, (req.body.command === "/videoprivate"));
-            } else {
-                const parseUser = await getOrCreateParseUser(req.body.user_id, conf, conf.config.slackClient);
-                let blocks = [];
-
-                await pushActiveCallsFromConfToBlocks(conf, blocks, parseUser, req.body.team_id);
-                const message = {
-                    "text": "Live video information",
-                    "response_type": "ephemeral",
-                    // Block Kit Builder - http://j.mp/bolt-starter-msg-json
-                    "blocks": blocks
-                };
-
-
-                await axios.post(req.body.response_url, message
-                ).catch(console.error);
-            }
-        } catch (err) {
-            console.log("Error procesing command")
-            console.log(err);
-        }
-    } else {
-        next();
-    }
+    // if(req.body.command === "/saysomething" || req.body.command == "/moderator"){
+    //     try {
+    //         await sendModeratorMessageFromSlack(conf, req.body.user_id, req.body.text)
+    //         sendMessageWithLinkToUser(req.body.response_url,"Your message has been received by the moderators. They will contact you ASAP to follow up. " +
+    //             " Please note that since moderators are volunteers, we are unable to provide a 24/7 moderation service," +
+    //             " but will do our best to address every complaint as quickly as possible." //, and will be sure to follow up" +
+    //             // " to every report."
+    //                 , conf)
+    //     }catch(err){
+    //         console.log(err);
+    //         sendMessageWithLinkToUser(req.body.response_url, "An internal error occurred while sending your message. Please try again or email the organizers. ", conf);
+    //
+    //     }
+    //
+    //     return;
+    // }
+    // if(req.body.command === "/sessionhelp"){
+    //     try {
+    //         await sendSessionHelpMessageFromSlack(conf, req.body.user_id, req.body.text)
+    //         sendMessageWithLinkToUser(req.body.response_url,"Your message has been received by the organizers. You should receive a direct message via slack ASAP."
+    //             , conf)
+    //     }catch(err){
+    //         console.log(err);
+    //         sendMessageWithLinkToUser(req.body.response_url, "An internal error occurred while sending your message. Please try again or email the organizers. ", conf);
+    //
+    //     }
+    //
+    //     return;
+    // }
+    // if(req.body.command == "/gather"){
+    //     if(conf.config.GATHER_LINK)
+    //     {
+    //         const message = {
+    //             "text": "Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome",
+    //             "response_type": "ephemeral",
+    //             // Block Kit Builder - http://j.mp/bolt-starter-msg-json
+    //             "blocks": [
+    //                 {
+    //                     "type": "section",
+    //                     "text": {
+    //                         "type": "mrkdwn",
+    //                         "text": "Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome",
+    //                     }
+    //                 },
+    //                 {
+    //                     "type": "section",
+    //                     "text": {
+    //                         "type": "mrkdwn",
+    //                         "text": "Gather has multiple maps that you can explore, <https://www.doc.ic.ac.uk/~afd/pldi-beach-minimap.jpg|like this entrance area and beach>."
+    //                     },
+    //                     "accessory": {
+    //                         "type": "image",
+    //                         "image_url": "https://www.doc.ic.ac.uk/~afd/pldi-beach-minimap.jpg",
+    //                         "alt_text": "Gather map"
+    //                     }
+    //                 },
+    //                 {
+    //                     "type": "section",
+    //                     "text": {
+    //                         "type": "mrkdwn",
+    //                         "text": "The <https://www.doc.ic.ac.uk/~afd/pldi-minimap.jpg|virtual poster session and sponsor booths> also have their own room in Gather."
+    //                     },
+    //                     "accessory": {
+    //                         "type": "image",
+    //                         "image_url": "https://www.doc.ic.ac.uk/~afd/pldi-minimap.jpg",
+    //                         "alt_text": "Another Gather map"
+    //                     }
+    //                 }
+    //             ],
+    //         };
+    //         return axios.post(req.body.response_url, message);
+    //         // sendMessageWithLinkToUser(req.body.response_url,"Join the virtual space in Gather: "+conf.config.GATHER_LINK + ". Please note that Gather supports only Firefox and Chrome", conf);
+    //     }
+    //     else{
+    //         sendMessageWithLinkToUser(req.body.response_url,"This feature is not enabled on this slack workspace.", conf);
+    //     }
+    //     return
+    // }
+    // if(req.body.command === "/videodebug"){
+    //     req.body.command = "/video";
+    //     // return;
+    //
+    //
+    // }
+    // if (req.body.command === '/video_t' || req.body.command === '/video' || req.body.command === '/videoprivate' || req.body.command == "/videolist") {
+    //     res.send();
+    //     if(!conf.config.LOGIN_FROM_SLACK){
+    //         respondWithError(req.body.response_url, "Access video by logging in at " + conf.config.FRONTEND_URL);
+    //         return;
+    //     }
+    //
+    //     try {
+    //         if (req.body.text) {
+    //             await sendJoinLinkToUser(req.body, req.body.text, (req.body.command === "/videoprivate"));
+    //         } else {
+    //             const parseUser = await getOrCreateParseUser(req.body.user_id, conf, conf.config.slackClient);
+    //             let blocks = [];
+    //
+    //             await pushActiveCallsFromConfToBlocks(conf, blocks, parseUser, req.body.team_id);
+    //             const message = {
+    //                 "text": "Live video information",
+    //                 "response_type": "ephemeral",
+    //                 // Block Kit Builder - http://j.mp/bolt-starter-msg-json
+    //                 "blocks": blocks
+    //             };
+    //
+    //
+    //             await axios.post(req.body.response_url, message
+    //             ).catch(console.error);
+    //         }
+    //     } catch (err) {
+    //         console.log("Error procesing command")
+    //         console.log(err);
+    //     }
+    // } else {
+    //     next();
+    // }
 }
 
 async function processTwilioEvent(req, res) {
@@ -1601,6 +1601,7 @@ async function createNewRoom(req, res){
     // let confID = req.body.confid;
     let teamName = req.body.slackTeam;
     let confID = req.body.conference;
+    console.log("Create new room: Fetch conference")
     let conf = await getConference(teamName);
     if (!conf) {
         conf = await getConferenceByParseID(confID);
@@ -1608,6 +1609,7 @@ async function createNewRoom(req, res){
     if (!conf) 
         console.log('Warn: Request did not include data to find the conference');
 
+    console.log("Create new room: got conference")
     let roomName = req.body.room;
     let twilio = conf.twilio;
     let visibility = req.body.visibility;
@@ -1627,6 +1629,7 @@ async function createNewRoom(req, res){
         query.include("user");
         query.equalTo("sessionToken", token);
         let session = await query.first({useMasterKey: true});
+        console.log("Create new room: Got user from session token")
         if (session) {
             let parseUser = session.get("user");
             //Validate has privileges for conference
@@ -1643,7 +1646,7 @@ async function createNewRoom(req, res){
                     console.log("creating room with callback" + conf.config.TWILIO_CALLBACK_URL)
                     console.log("For " + parseUser.id + ": " + parseUser.get("displayname"))
                     console.log(roomName)
-                    let maxParticipants = (mode == "peer-to-peer" ? 10 : (mode == "group-small" ? 4 : 50));
+                    let maxParticipants = (mode == "peer-to-peer" ? 10 : (mode == "group-small" ? 4 : 10));
                     let twilioRoom = await twilio.video.rooms.create({
                         type: mode,
                         // type: conf.config.TWILIO_ROOM_TYPE,
@@ -1911,7 +1914,7 @@ async function sendModeratorMessage(req,res){
     let users = await Parse.Object.fetchAll(unfilledUsers, {useMasterKey: true});
     let usersString = "";
     for(let user of users){
-        usersString += "<@"+user.get("slackID")+">, ";
+        usersString += user.get("displayName")+", ";
     }
     if(usersString.length > 0){
         usersString = usersString.substring(0,usersString.length - 2);
@@ -1926,7 +1929,7 @@ async function sendModeratorMessage(req,res){
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "A moderation request was received from <@"+profile.get("slackID")+"> " +
+                    "text": "A moderation request was received from "+profile.get("displayName")+" " +
                         " while in the web chat room titled: '"+room.get("title")+"', which contained at the time " +
                         "the following users: " + usersString + ". Message follows:"
                 }
@@ -2102,9 +2105,10 @@ app.post('/chat/token',bodyParser.json(), bodyParser.urlencoded({extended: false
             let userProfile = await getUserProfile(sessionObj.get("user").id, conf);
             let name = userProfile.id;
             let sessionID = sessionObj.id;
+            let now = new Date().getTime();
             const chatGrant = new ChatGrant({
                 serviceSid: conf.config.TWILIO_CHAT_SERVICE_SID,
-                endpointId: `${name}:browser:${sessionID}`
+                endpointId: `${name}:browser:${sessionID}:${now}`
 
             });
             accessToken.addGrant(chatGrant);
